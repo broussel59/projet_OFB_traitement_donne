@@ -110,7 +110,7 @@ output$q90 <- renderDT({
 
       # Si la médiane dépasse 100 000, les valeurs sont en L/s → conversion
       # Sinon elles sont déjà en m³/s (cas rare mais existant sur Hub'Eau)
-      if (median(debits) > 100000) {
+      if (!is.na(median(debits)) && median(debits) > 100000) {
         debits <- debits / 1000
       }
       # 8. Calcule Q90, Q50 et le nombre de jours sous le Q90
