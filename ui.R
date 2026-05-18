@@ -1,6 +1,7 @@
 library(shiny)
 library(leaflet)
 library(plotly)
+library(DT)
 
 ui <- fluidPage(
   titlePanel("Hydrologiques"),
@@ -16,14 +17,11 @@ ui <- fluidPage(
     ),
     
     mainPanel(
-      tabsetPanel(
+      tabsetPanel(id = "tabs",
         tabPanel("Carte des Stations", leafletOutput("map_france")),
-        tabPanel("Q90", plotlyOutput("graph_q90"),),
+        tabPanel("Q90/Q50", DTOutput("q90"),),
         tabPanel("VCN10", plotlyOutput("graph_vcn10"),)
       )
     )
-    
-  
-
   )
 )
