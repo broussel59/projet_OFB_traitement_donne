@@ -129,4 +129,6 @@ server <- function(input, output) {
     datatable(tableau, rownames = FALSE)
   })
 
+  output$vcn10
+
 }
