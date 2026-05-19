@@ -90,7 +90,7 @@ output$q90 <- renderDT({
       )
 
       # 6. Passe à la station suivante si pas de données
-      if (is.null(reponse$data) || nrow(reponse$data) == 0) next
+ if (is.null(reponse) || is.null(reponse$data) || length(reponse$data) == 0) next
       # message("Grandeurs : ", paste(unique(reponse$data$grandeur_hydro), collapse = ", "))
 
       # Filtre en R — garde uniquement les débits moyens journaliers
@@ -98,7 +98,7 @@ output$q90 <- renderDT({
       if (nrow(donnees) == 0) next
 
       # 7. Extrait les débits journaliers
-      debits <- as.numeric(reponse$data$resultat_obs)
+      debits <- as.numeric(donnees$resultat_obs_elab)
       debits <- debits[!is.na(debits) & debits >= 0]
       if (length(debits) < 3650) next       # pas assez de données : on passe
 
