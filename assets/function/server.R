@@ -42,9 +42,6 @@ server <- function(input, output) {
     m
   })
 
-
-  # ── Fonctions inchangées ───────────────────────────────────────────
-
   get_serie_hydro <- function(code_station, date_debut, date_fin, param) {
     get_hydrometrie_obs_elab(
       code_entite         = code_station,
@@ -75,8 +72,6 @@ server <- function(input, output) {
     )
   }
 
-
-  # ── Chargement central — déclenché dès le clic bouton ─────────────
   # Toutes les séries brutes, accessibles partout dans le server
   series_brutes <- reactiveVal(NULL)
 
@@ -104,8 +99,6 @@ server <- function(input, output) {
     series_brutes(series)
   })
 
-
-  # ── Tableau Q90 / Q50 — utilise series_brutes() ───────────────────
 
   output$q90 <- renderDT({
     series   <- series_brutes()
