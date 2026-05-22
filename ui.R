@@ -25,3 +25,5 @@ ui <- fluidPage(
     )
   )
 )
+
+# TODO voir pour creer un onglet independent pour une carte qui regrouperai tout les type de valeur étudier sur l'outil
