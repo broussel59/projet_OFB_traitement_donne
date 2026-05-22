@@ -21,6 +21,8 @@ ui <- fluidPage(
         tabPanel("Carte des Stations", leafletOutput("map_france")),
         tabPanel("Q90/Q50", DTOutput("q90"),),
         tabPanel("VCN10/VCN3", plotlyOutput("vcn", height = "400px"),)
+        tabPanel("tendence Q90/Q50", DTOutput("tendq90"),),
+        tabPanel("tendence VCN10/VCN3", DTOutput("tendvcn"),),
       )
     )
   )
