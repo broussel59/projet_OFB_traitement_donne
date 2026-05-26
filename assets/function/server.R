@@ -8,6 +8,7 @@ library(dplyr)
 library(leaflet)
 library(hubeau)
 library(purrr)
+library(trend)
 library(lubridate)
 library(runner)
 
@@ -116,6 +117,7 @@ VCNx_1sta <- function (vecteur_debits_spe, vecteur_dates, jours_glissants, code_
   # Toutes les séries brutes, accessibles partout dans le server
   series_brutes <- reactiveVal(NULL)
   surface_bv_data <- reactiveVal(NULL)
+  seuils_stations <- reactiveVal(NULL) 
 
   observeEvent(stations_dept(), {
     stations <- stations_dept()
@@ -143,6 +145,18 @@ VCNx_1sta <- function (vecteur_debits_spe, vecteur_dates, jours_glissants, code_
      codes_sites <- get_hydrometrie_stations(code_departement = input$dept) %>%
       filter(en_service == TRUE) %>%
       select(code_site, code_station)
+    
+    # Calcul Q90 / Q50 par station sur toute la période
+    seuils <- map2(series, stations$code_station, function(df, code) {
+      if (is.null(df) || !is.data.frame(df) || nrow(df) == 0) return(NULL)
+      debits <- as.numeric(df$resultat_obs_elab)
+      debits <- debits[!is.na(debits) & debits >= 0]
+      if (length(debits) < 3650) return(NULL)
+      if (median(debits) > 1800) debits <- debits / 1000
+      list(q90 = quantile(debits, 0.10), q50 = quantile(debits, 0.50))
+    })
+    names(seuils) <- stations$code_station
+    seuils_stations(seuils)
 
     surface_bv <- get_hydrometrie_sites(code_departement = input$dept) %>%
       select(code_site, surface_bv) %>%
@@ -155,24 +169,17 @@ VCNx_1sta <- function (vecteur_debits_spe, vecteur_dates, jours_glissants, code_
 
   output$q90 <- renderDT({
     series   <- series_brutes()
+    seuils   <- seuils_stations()
     stations <- stations_dept()
-    req(series)
- 
-    resultats <- map2(series, seq_along(series), function(df, i) {
+    req(series, seuils)
 
-      if (is.null(df) || !is.data.frame(df) || nrow(df) == 0) return(NULL)
-
-      debits <- as.numeric(df$resultat_obs_elab)
-      debits <- debits[!is.na(debits) & debits >= 0]
-      if (length(debits) < 30) return(NULL)
-
-      if (median(debits) > 1800) debits <- debits / 1000
-
+    resultats <- map2(seuils, seq_along(seuils), function(s, i) {
+      if (is.null(s)) return(NULL)
       data.frame(
         `Nom de la station` = stations$libelle_station[i],
         `Code station`      = stations$code_station[i],
-        `Q90 (m³/s)`        = round(quantile(debits, 0.10), 3),
-        `Q50 (m³/s)`        = round(quantile(debits, 0.50), 3),
+        `Q90 (m³/s)`        = round(s$q90, 3),
+        `Q50 (m³/s)`        = round(s$q50, 3),
         check.names = FALSE
       )
     })
@@ -247,6 +254,78 @@ VCNx_1sta <- function (vecteur_debits_spe, vecteur_dates, jours_glissants, code_
         legend    = list(x = 0.75, y = 0.95),
         hovermode = "x unified"
       )
+  })
+
+  # Ajout dans ui.R :
+# tabPanel("Tendances Q90/Q50", DTOutput("tendances_q90"))
+
+# Ajout en haut de server.R :
+# library(trend)
+
+# Bloc à ajouter dans server.R avant la dernière }
+
+output$tendances_q90 <- renderDT({ 
+    series   <- series_brutes()
+    seuils   <- seuils_stations()   # ← Q90 déjà calculés, pas besoin de recalculer
+    stations <- stations_dept()
+    req(series, seuils)
+ 
+    tester_mk <- function(valeurs) {
+      if (length(valeurs) < 4) return(NULL)
+      tryCatch(
+        list(mk = mk.test(valeurs), slope = sens.slope(valeurs)),
+        error = function(e) NULL
+      )
+    }
+ 
+    interpreter <- function(res) {
+      if (is.na(res$mk$p.value) || res$mk$p.value > 0.05 || res$slope$estimates == 0) return("Pas de tendance")
+      if (res$slope$estimates > 0) return("Dégradation")   
+      if (res$slope$estimates < 0) return("Amélioration")
+    }
+ 
+    resultats <- map2(series, seq_along(series), function(df, i) {
+      if (is.null(df) || !is.data.frame(df) || nrow(df) == 0) return(NULL)
+ 
+      code <- stations$code_station[i]
+      s    <- seuils[[code]]
+      if (is.null(s)) return(NULL)
+ 
+      df <- df %>%
+        mutate(debit = as.numeric(resultat_obs_elab)) %>%
+        filter(!is.na(debit), debit >= 0)
+ 
+      if (nrow(df) < 30) return(NULL)
+      if (median(df$debit) > 1800) df$debit <- df$debit / 1000
+ 
+      # Nombre de jours sous le Q90 par année (durée de sécheresse annuelle)
+      duree_sech <- df %>%
+        group_by(annee) %>%
+        summarise(duree = sum(debit < s$q90), .groups = "drop") %>%
+        arrange(annee)
+ 
+      res <- tester_mk(duree_sech$duree)
+      if (is.null(res)) return(NULL)
+ 
+      data.frame(
+        `Nom de la station` = stations$libelle_station[i],
+        `Code station`      = code,
+        `P-value`           = round(res$mk$p.value, 10),
+        `Sens de la pente`  = round(res$slope$estimates, 5),   # jours/an
+        `Tendance`          = interpreter(res),
+        check.names = FALSE
+      )
+    })
+ 
+    tableau <- bind_rows(resultats) %>%
+      arrange(factor(Tendance, levels = c("Dégradation", "Pas de tendance", "Amélioration")))
+ 
+    validate(need(nrow(tableau) > 0, "Aucune donnée trouvée."))
+ 
+    couleurs <- c("Dégradation" = "#ffcdd2", "Pas de tendance" = "#fff9c4", "Amélioration" = "#c8e6c9")
+ 
+    datatable(tableau, rownames = FALSE) %>%
+      formatStyle("Tendance", backgroundColor = styleEqual(names(couleurs), couleurs))
   })
 
 }

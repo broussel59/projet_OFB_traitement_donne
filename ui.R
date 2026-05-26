@@ -18,11 +18,11 @@ ui <- fluidPage(
     
     mainPanel(
       tabsetPanel(id = "tabs",
-        tabPanel("Carte des Stations", leafletOutput("map_france")),
+        tabPanel("Carte des stations", leafletOutput("map_france")),
         tabPanel("Q90/Q50", DTOutput("q90"),),
-        tabPanel("VCN10/VCN3", plotlyOutput("vcn", height = "400px"),)
-        tabPanel("tendence Q90/Q50", DTOutput("tendq90"),),
-        tabPanel("tendence VCN10/VCN3", DTOutput("tendvcn"),),
+        tabPanel("VCN10/VCN3", plotlyOutput("vcn", height = "400px"),),
+        tabPanel("tendance Q90/Q50", DTOutput("tendances_q90"),),
+        tabPanel("tendace VCN10/VCN3", DTOutput("tendvcn"),),
       )
     )
   )
