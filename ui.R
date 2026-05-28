@@ -5,27 +5,25 @@ library(DT)
 
 ui <- fluidPage(
   titlePanel("Hydrologiques"),
-  
+
   sidebarLayout(
     sidebarPanel(
       selectInput("dept", "Choisir un département :",
-                  choices = setNames(sprintf("%02d", 1:95), sprintf("Département %02d", 1:95)),
-                  selected = "1"),
-      
+        choices  = setNames(sprintf("%02d", 1:95), sprintf("Département %02d", 1:95)),
+        selected = "59"
+      ),
       helpText("Analyse basée sur le Q90 et le VCN10."),
       actionButton("run_all", "Lancer la recherche départementale", class = "btn-primary")
     ),
-    
+
     mainPanel(
       tabsetPanel(id = "tabs",
-        tabPanel("Carte des stations", leafletOutput("map_france")),
-        tabPanel("Q90/Q50", DTOutput("q90"),),
-        tabPanel("VCN10/VCN3", plotlyOutput("vcn", height = "400px"),),
-        tabPanel("tendance Q90/Q50", DTOutput("tendances_q90"),),
-        tabPanel("tendace VCN10/VCN3", DTOutput("tendvcn"),),
+        tabPanel("Carte des stations",   leafletOutput("map_france")),
+        tabPanel("Q90 / Q50",            DTOutput("q90")),
+        tabPanel("VCN10 / VCN3",         plotlyOutput("vcn", height = "400px")),
+        tabPanel("Tendances Q90",        DTOutput("tendances_q90")),
+        tabPanel("Tendances VCN10",      DTOutput("tendvcn"))
       )
     )
   )
 )
-
-# TODO voir pour creer un onglet independent pour une carte qui regrouperai tout les type de valeur étudier sur l'outil

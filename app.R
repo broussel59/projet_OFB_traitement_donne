@@ -1,10 +1,9 @@
+# ── Point d'entrée ────────────────────────────────────────────────
+# Pour lancer : shiny::runApp()
+
 library(shiny)
 
-# charger l'interface
-source("ui.R") 
+source("ui.R")
+source("server.R")
 
-# cela va créer un objet nommé 'server' dans la mémoire R
-source("assets/function/server.R") 
-
-# lancer l'app en utilisant les objets chargés
 shinyApp(ui = ui, server = server)
