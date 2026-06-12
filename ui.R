@@ -3,13 +3,14 @@ library(leaflet)
 library(plotly)
 library(DT)
 
-addResourcePath("static", "www")
+addResourcePath("static", "assets/css")
+addResourcePath("img", "assets/image")
 
 ui <- fluidPage(
 
   tags$head(
     tags$link(rel = "stylesheet", type = "text/css", href = "static/style.css"),
-    tags$link(rel = "icon", type = "image/png", href = "static/favicon.png")
+    tags$link(rel = "icon", type = "image/png", href = "img/favicon.png")
   ),
 
   div(
@@ -18,13 +19,13 @@ ui <- fluidPage(
   ),
 
   tags$img(
-    src   = "static/logo.png",
+    src   = "img/logo.png",
     alt   = "Logo OFB",
     style = "position:fixed; bottom:0; right:0; padding:10px; z-index:100; width:180px;"
   ),
 
   tags$img(
-    src   = "static/filigrane.png",
+    src   = "img/filigrane.png",
     alt   = "filigrane",
     style = "position:fixed; bottom:0; right:0; padding:0; width:700px; z-index:-1; opacity:0.9;"
   ),
