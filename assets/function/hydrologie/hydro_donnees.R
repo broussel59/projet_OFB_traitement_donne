@@ -1,7 +1,7 @@
+# ── Module : chargement API + stockage central ────────────────────
 
-hydro_donnees_server <- function(input, series_brutes, surface_bv_data, seuils_stations) {
+hydro_donnees_server <- function(input, series_brutes, surface_bv_data, seuils_stations, vcn_stations) {
 
-  # Fonctions internes de récupération API
   get_serie_hydro <- function(code_station, date_debut, date_fin, param) {
     get_hydrometrie_obs_elab(
       code_entite         = code_station,
@@ -14,11 +14,13 @@ hydro_donnees_server <- function(input, series_brutes, surface_bv_data, seuils_s
   }
 
   series_stations_tot <- function(hydro_stations, date_debut, date_fin, param) {
-    get_serie_hydro_possible <- possibly(get_serie_hydro, otherwise = NULL)
-    map(.x = hydro_stations, .f = function(x) {
-      get_serie_hydro_possible(x, date_debut, date_fin, param)
-    })
-  }
+  get_serie_hydro_possible <- possibly(get_serie_hydro, otherwise = NULL)
+  n <- length(hydro_stations)
+  imap(hydro_stations, function(x, i) {
+    setProgress(i / n, message = paste("Station", i, "/", n))
+    get_serie_hydro_possible(x, date_debut, date_fin, param)
+  })
+}
 
   # Récupère les stations du département au clic bouton
   stations_dept <- eventReactive(input$run_all, {
@@ -31,7 +33,6 @@ hydro_donnees_server <- function(input, series_brutes, surface_bv_data, seuils_s
     }, error = function(e) NULL)
   })
 
-  # Charge toutes les données dès que les stations arrivent
   observeEvent(stations_dept(), {
     stations   <- stations_dept()
     req(stations)
@@ -46,25 +47,45 @@ hydro_donnees_server <- function(input, series_brutes, surface_bv_data, seuils_s
         date_fin       = date_fin,
         param          = "QmnJ"
       )
-      setProgress(1, message = "Terminé")
+      setProgress(0.5, message = "Calcul des indicateurs...")
     })
 
     names(series) <- stations$code_station
     series_brutes(series)
 
-    # Q90 / Q50 calculés UNE SEULE FOIS ici, réutilisés dans tous les modules
+    # ── Q90 / Q50 par station ─────────────────────────────────────
     seuils <- map(series, function(df) {
       if (is.null(df) || !is.data.frame(df) || nrow(df) == 0) return(NULL)
       debits <- as.numeric(df$resultat_obs_elab)
       debits <- debits[!is.na(debits) & debits >= 0]
       if (length(debits) < 3650) return(NULL)
-      if (median(debits) > 1800) debits <- debits / 1000
+      if (median(debits) > 2) debits <- debits / 1000
       list(q90 = quantile(debits, 0.10), q50 = quantile(debits, 0.50))
     })
     names(seuils) <- stations$code_station
     seuils_stations(seuils)
 
-    # Surface des bassins versants
+    # ── VCN10 / VCN3 par station ──────────────────────────────────
+    vcn <- map(names(series), function(code) {
+      df <- series[[code]]
+      if (is.null(df) || !is.data.frame(df) || nrow(df) == 0) return(NULL)
+
+      debits  <- as.numeric(df$resultat_obs_elab)
+      dates   <- as.Date(df$date_obs_elab)
+      valides <- !is.na(debits) & debits >= 0 & !is.na(dates)
+      debits  <- debits[valides] ; dates <- dates[valides]
+      if (length(debits) < 30) return(NULL)
+      if (median(debits) > 2) debits <- debits / 1000
+
+      vcn10 <- tryCatch(VCNx_1sta(debits, dates, 10, code), error = function(e) NULL)
+      vcn3  <- tryCatch(VCN3_1sta(debits, dates,  3, code), error = function(e) NULL)
+
+      list(vcn10 = vcn10, vcn3 = vcn3)
+    })
+    names(vcn) <- names(series)
+    vcn_stations(vcn)
+
+    # ── Surfaces des bassins versants ─────────────────────────────
     codes_sites <- get_hydrometrie_stations(code_departement = input$dept) %>%
       filter(en_service == TRUE) %>%
       select(code_site, code_station)
@@ -74,6 +95,8 @@ hydro_donnees_server <- function(input, series_brutes, surface_bv_data, seuils_s
       right_join(codes_sites, by = "code_site")
 
     surface_bv_data(surface_bv)
+
+    setProgress(1, message = "Terminé")
   })
 
   return(stations_dept)

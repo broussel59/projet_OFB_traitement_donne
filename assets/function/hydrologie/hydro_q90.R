@@ -1,4 +1,3 @@
-# ── Module : tableau Q90 / Q50 ────────────────────────────────────
 
 hydro_q90_server <- function(input, output, stations_dept, seuils_stations) {
 
