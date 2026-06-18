@@ -32,4 +32,4 @@ jobs:
       - name: 💎 Deploy to shinyapps.io
         run: |
           Rscript -e "rsconnect::setAccountInfo(name='hydrotrend', token='${{ secrets.TOKEN }}', secret='${{ secrets.SECRET }}')"
-          Rscript -e "rsconnect::deployApp(appName='myApp', appDir='.')"
+          Rscript -e "rsconnect::deployApp(appName='myApp', appDir='.', dependencyResolution='local')"
